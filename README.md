@@ -39,7 +39,7 @@ DSH（DeepSeek Harness）手机端 Web 的会话侧栏默认是「从左侧盖�
 dsh plugin --profile web add dsh-web-mobile
 
 # 安装本插件（热生效，无需重启服务）
-dsh plugin --profile web add github:<OWNER>/dsh-kimi-shell
+dsh plugin --profile web add github:Bill-666code/dsh-kimi-shell
 
 # 卸载
 dsh plugin --profile web rm dsh-kimi-shell
@@ -98,7 +98,7 @@ corners, grabber, dimmed scrim, single-axis slide animation.
 
 ```sh
 dsh plugin --profile web add dsh-web-mobile        # dependency, if missing
-dsh plugin --profile web add github:<OWNER>/dsh-kimi-shell
+dsh plugin --profile web add github:Bill-666code/dsh-kimi-shell
 ```
 
 Hot-reloads into a running profile — no service restart needed. Desktop is

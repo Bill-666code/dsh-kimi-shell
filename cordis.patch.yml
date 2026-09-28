@@ -1,0 +1,5 @@
+# dsh-kimi-shell bundle patch: one client-only plugin row.
+# Host half is an empty apply; the browser half owns all styling.
+- insert:
+    - id: dsh-kimi-shell
+      name: 'dsh-kimi-shell'

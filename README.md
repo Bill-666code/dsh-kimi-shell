@@ -1,108 +1,92 @@
 # dsh-kimi-shell
 
-**把 dsh-web-mobile 的左侧会话抽屉，变成 kimi 风格的底部浮层（bottom sheet）。**
-**Turn the dsh-web-mobile session drawer into a kimi-style bottom sheet.**
+**DSH（DeepSeek Harness）手机端 Web 的独立移动壳：会话侧栏变 kimi 风格底部浮层，开箱即用、单插件安装。**
+**A standalone mobile shell for DSH web: turns the session sidebar into a kimi-style bottom sheet. One plugin, zero extra deps.**
 
 [中文](#中文) · [English](#english)
 
 | 改造前 Before | 改造后 After |
 |---|---|
-| 左侧抽屉盖住 70% 屏宽，内容区被挤成竖缝 | 底部上滑浮层，会话记录全程可见 |
+| 窄屏下侧栏挤占内容、无移动交互 | 底部上滑浮层 + FAB，会话记录全程可见 |
 | ![before](docs/before.png) | ![after](docs/after.png) |
 
 ## 中文
 
-DSH（DeepSeek Harness）手机端 Web 的会话侧栏默认是「从左侧盖过来的抽屉」，
-打开后挤占大半个屏幕。本插件把它改造成移动端原生的底部浮层交互：
+DSH 的 Web 界面按桌面设计，手机上侧栏挤占内容、交互别扭。本插件提供一个完整的移动壳：
 
-- **底部浮层**：100vw × 82dvh、顶部圆角 + 抓手（grabber）+ 投影 + 遮罩
-- **单轴动画**：打开自底部上滑、关闭向下滑出，一气呵成（内置「动画改道器」，
-  把 dsh-web-mobile 的内联 translateX 序章实时改写为等进度 translateY）
-- **内容铺满**：会话列表横向铺满整宽；工作区分组降为紧凑小节头；
-  会话行 44px 触屏目标；隐藏品牌行
-- **输入法防误弹**：切换/新建会话后不再自动聚焦输入框（键盘不再遮挡会话记录），
-  直接点输入框仍可正常打字
-- **桌面零影响**：所有规则锁在 `(max-width: 1023px) and (pointer: coarse)` 里，
-  鼠标指针下任何窗口宽度都不生效；不写宿主半逻辑、不 patch 组件
+- **底部浮层**：100vw × 82dvh、顶部圆角 + 抓手 + 投影 + 遮罩；开合单轴滑动（自下而上 / 向下滑出）
+- **FAB + 遮罩**：收起态右下角悬浮球为唯一入口（系统色自适应明暗）；点遮罩 / 选中会话后自动收起
+- **内容 kimi 化**：会话列表铺满整宽、44px 触屏行、工作区分组降为紧凑小节头、隐藏品牌行
+- **输入法防误弹**：切换/新建会话后不再自动聚焦输入框（键盘不遮挡会话记录）；直接点输入框正常打字
+- **默认浅色主题**：手机端首次加载时若主题偏好仍是 system（跟随系统），一次性改写为 light
+  并持久化到宿主 user-settings（服务端保存，之后所有设备默认浅色；显式选过 dark 的不动）
+- **viewport 补齐**：`viewport-fit=cover`（刘海安全区）、`interactive-widget=resizes-content`（键盘让位）、
+  禁双击缩放、输入区 16px 防 iOS 聚焦放大
+- **桌面零影响**：全部锁在 `(max-width: 1023px) and (pointer: coarse)`，鼠标指针任何窗口宽度不生效；
+  不写宿主半逻辑、不 patch 组件、自有 `data-kimi-*` 命名空间
+- **与 dsh-web-mobile 互斥**：检测到其在场时本插件自动休眠（console 提示），卸载后者后自动接管
 
 ### 环境要求
 
-- DeepSeek Harness `dsh` ≥ 0.1.7-rc.2（在 0.1.7-rc.2 实测）
-- **[dsh-web-mobile](https://github.com/mexiaosqwq/dsh-web-mobile) ≥ 3.0.3（硬依赖）**
-  —— 本插件改造的就是它的抽屉：开合状态机、遮罩、FAB、gzip 全部复用，
-  只覆盖呈现层。请先装它，再装本插件（顺序不影响功能）。
+- DeepSeek Harness `dsh` ≥ 0.2.0-rc.1（在 0.2.0-rc.1 实测；帧探测钩子在 0.1.7-rc.2 亦可用）
+- **无任何插件依赖**（v0.2 及更早版本依赖 dsh-web-mobile，v0.3 起独立）
 
 ### 安装 / 卸载
 
 ```sh
-# 先装依赖（若尚未安装）
-dsh plugin --profile web add dsh-web-mobile
-
-# 安装本插件（热生效，无需重启服务）
-dsh plugin --profile web add github:Bill-666code/dsh-kimi-shell
-
-# 卸载
-dsh plugin --profile web rm dsh-kimi-shell
+dsh plugin --profile web add github:Bill-666code/dsh-kimi-shell   # 热生效，无需重启服务
+dsh plugin --profile web rm dsh-kimi-shell                        # 卸载
 ```
 
-装好后手机浏览器打开 DSH Web 即生效，无需任何配置；桌面端不受影响。
+装好后手机浏览器打开 DSH Web 即生效；桌面端不受影响。
 
 ### 工作原理
 
-1. **CSS 覆盖**（媒体查询门控 + 双写属性选择器保特异性）：
-   把 dsh-web-mobile 定位为左抽屉的侧栏列改写为底部浮层盒子；
-2. **动画改道器**：MutationObserver 监听列的内联 `transform`
-   （它的开合序章是 JS 内联 `translateX(±110%)!important` CSS 动画，
-   样式表无法覆盖），在渲染前把每一帧改写为等进度的 `translateY`；
-3. **输入法防误弹**：`focusin` 捕获 + 抑制窗口（浮层内按下指针起 1.5s），
-   期间主会话区编辑框聚焦即 blur；直接点按放行，浮层内重命名输入不拦。
-
-自有 `data-kimi-shell` / id 键控的命名空间，不碰 `[data-mobile-nav]` 属性值，
-与 dsh-better-sidebar 等其它插件实测共存。
+1. **外壳 reconciler**：`[data-shell-overlay]` 的父元素定位宿主帧并标记 `data-kimi-frame`
+   （MutationObserver + rAF 合帧，宿主重渲染自愈）；确保 FAB / 遮罩元素存在。
+2. **CSS**：媒体查询门控 + 自有命名空间，侧栏列 → 底部浮层盒子，网格收为单列；
+   开合状态直接由宿主原生 `data-sidebar-collapsed` 属性驱动，动画走原生属性翻转 + transform 过渡
+   （无 JS 改道、无手势库——kimi 同款「克制」哲学）。
+3. **开合 API**：官方 `ctx.layout.toggleSidebar()`（0.2.0 起需显式 `inject: ['layout','theme']` 声明）。
+4. **主题**：官方 `ctx.theme.setTheme('light')`，仅当偏好为 system 时一次性写入。
 
 ### 无触摸仿真的浏览器上如何调试
 
-浏览器原生 CSS media query 不吃 JS 的 matchMedia 补丁，无头/桌面浏览器看不到
-移动效果。本插件内置测试通道：`sessionStorage.setItem('kimi-test','1')` 后刷新
-（或 URL 带 `#kimi-test=1`）——会复制 dsh-web-mobile 的样式表、把移动 media query
-改写为无条件命中后注入副本，同时本插件 CSS 去 media 包装直接生效。
-`kimi-test=0` 退出。真实手机无需任何参数。
+浏览器原生 CSS media query 不吃 JS 补丁，无头/桌面浏览器看不到移动效果。测试通道：
+`sessionStorage.setItem('kimi-test','1')` 后刷新（URL query 会被宿主清掉，hash 也可能被清，
+sessionStorage 最可靠）——CSS 去 media 包装直接生效，JS 外壳效果强制启用。`?kimi-test=0` 退出。
+注意：主题改写在 TEST 下不触发（避免污染测试者的服务端偏好）。
 
 ### 兼容性说明
 
-- 会话树定位使用 `[class*="sessionRow"]` 等子串选择器（与 dsh-web-mobile 同款
-  技术），宿主大版本升级改类名时可能需要跟随更新；
-- 已实测组合：dsh 0.1.7-rc.2 + dsh-web-mobile 3.0.3 + dsh-better-sidebar 0.21.1。
+- 会话树定位用 `[class*="sessionRow"]` 等子串选择器（CSS module 哈希防漂移技术，社区通用做法），
+  宿主大版本升级改类名时可能需要跟随更新；
+- 已实测：dsh 0.2.0-rc.1 + dsh-better-sidebar 0.24.1 共存；
+  与 dsh-web-mobile 同时安装时本插件自动休眠。
 
 ## English
 
-A [DSH](https://github.com/deepseek-ai/deepseek-harness) web UI plugin that
-transforms the **dsh-web-mobile** session drawer (a left overlay covering ~70%
-of the screen) into a **kimi-style bottom sheet** — full-width, rounded top
-corners, grabber, dimmed scrim, single-axis slide animation.
+A standalone mobile shell for [DSH](https://github.com/deepseek-ai/deepseek-harness) web:
 
-- Bottom sheet: 100vw × 82dvh; session rows become 44px touch targets
-- Clean open/close: a MutationObserver redirects dsh-web-mobile's inline
-  `translateX` choreography to equivalent-progress `translateY` in real time
-- No keyboard hijack: switching/creating sessions no longer auto-focuses the
-  composer; tapping the input directly still works
-- Zero desktop impact: everything is gated behind
-  `(max-width: 1023px) and (pointer: coarse)`
+- Session sidebar → **kimi-style bottom sheet** (100vw × 82dvh, rounded top, grabber, scrim)
+- Clean single-axis slide animation driven by the host's native collapsed state — no gesture library
+- FAB (system-color adaptive) + backdrop; sheet auto-dismisses after picking a session
+- No keyboard hijack on session switch; light theme default (persisted once, only when preference is "system")
+- viewport hardening (cover / interactive-widget / no double-tap zoom / 16px inputs)
+- Zero desktop impact — everything gated behind `(max-width: 1023px) and (pointer: coarse)`
+- Dorms when dsh-web-mobile is present (avoid double shells)
 
 ### Requirements
 
-- dsh ≥ 0.1.7-rc.2 · **dsh-web-mobile ≥ 3.0.3** (hard dependency — this plugin
-  only restyles its drawer; install it first)
+- dsh ≥ 0.2.0-rc.1 · no other plugins needed
 
 ### Install
 
 ```sh
-dsh plugin --profile web add dsh-web-mobile        # dependency, if missing
 dsh plugin --profile web add github:Bill-666code/dsh-kimi-shell
 ```
 
-Hot-reloads into a running profile — no service restart needed. Desktop is
-untouched.
+Hot-reloads into a running profile — no service restart. Desktop untouched.
 
 ## License
 
